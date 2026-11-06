@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mensagens Mágicas com IA</title>
+    <style>
+        :root {
+            --preto: #000000;
+            --vermelho: #FF0000;
+            --branco: #FFFFFF;
+            --roxo: #A020F0;
+            --cinza: #808080;
+            --neon: #00f2ff;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--preto);
+            color: var(--branco);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .card-config {
+            background-color: #121212;
+            border: 2px solid var(--roxo);
+            border-radius: 15px;
+            padding: 20px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 0 15px rgba(160, 32, 240, 0.3);
+        }
+
+        h2 { color: var(--roxo); text-align: center; margin-top: 0; }
+
+        .campo { margin-bottom: 15px; }
+
+        label { display: block; color: var(--cinza); font-size: 14px; margin-bottom: 5px; }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            background: #1e1e1e;
+            border: 1px solid var(--cinza);
+            color: white;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        input:focus, textarea:focus {
+            border-color: var(--roxo);
+            outline: none;
+        }
+
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        
+        .full-btn { grid-column: span 2; }
+
+        button {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            text-transform: uppercase;
+        }
+
+        .btn-gerar { background-color: var(--roxo); color: white; }
+        .btn-ia { background: linear-gradient(90deg, #800080, #00f2ff); color: white; }
+        .btn-limpar { background-color: #333; color: white; }
+        .btn-compartilhar { background-color: var(--vermelho); color: white; display: none; }
+
+        button:hover { opacity: 0.8; transform: scale(1.02); }
+
+        /* Área da Mensagem Animada */
+        #preview-container {
+            margin-top: 30px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            display: none;
+        }
+
+        .moldura-animada {
+            padding: 30px;
+            border-radius: 20px;
+            border: 4px solid var(--roxo);
+            background: linear-gradient(145deg, #000000, #1a002a);
+            position: relative;
+            overflow: hidden;
+            animation: brilho 3s infinite alternate;
+        }
+
+        @keyframes brilho {
+            from { box-shadow: 0 0 10px var(--roxo); }
+            to { box-shadow: 0 0 30px var(--vermelho); border-color: var(--vermelho); }
+        }
+
+        #texto-animado {
+            font-size: 1.4rem;
+            line-height: 1.5;
+            animation: flutuar 2s infinite ease-in-out;
+            white-space: pre-wrap;
+        }
+
+        @keyframes flutuar {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .data-selo {
+            margin-top: 20px;
+            display: inline-block;
+            padding: 5px 15px;
+            background: var(--roxo);
+            border-radius: 20px;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .aviso-auto {
+            font-size: 11px;
+            color: var(--neon);
+            margin-top: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card-config">
+        <h2>✨ Criar Mensagem</h2>
+        
+        <div class="campo">
+            <label>O que você sente?</label>
+            <select id="categoria" onchange="iaGerarTexto()">
+                <option value="amor">Amor Eterno ❤️</option>
+                <option value="carinho">Carinho & Amizade 😊</option>
+                <option value="aniversario">Feliz Aniversário 🎂</option>
+            </select>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <div class="campo" style="flex: 2;">
+                <label>Mês:</label>
+                <input type="text" id="mes" placeholder="Ex: Agosto" oninput="iaGerarTexto()">
+            </div>
+            <div class="campo" style="flex: 1;">
+                <label>Ano:</label>
+                <input type="number" id="ano" oninput="iaGerarTexto()">
+            </div>
+        </div>
+
+        <div class="campo">
+            <label>Mensagem sugerida pela IA:</label>
+            <textarea id="texto-editavel" rows="4"></textarea>
+            <div class="aviso-auto">🤖 IA Ativa: Mensagem personalizada gerada!</div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-ia full-btn" onclick="iaGerarTexto()">🔄 Gerar Nova Sugestão IA</button>
+            <button class="btn-gerar" onclick="gerarVisualizacao()">Visualizar</button>
+            <button class="btn-limpar" onclick="limparCampos()">Limpar Tudo</button>
+            <button id="btnComp" class="btn-compartilhar full-btn" onclick="compartilhar()">Compartilhar</button>
+        </div>
+    </div>
+
+    <div id="preview-container">
+        <div class="moldura-animada">
+            <div id="texto-animado"></div>
+            <div class="data-selo" id="selo-data"></div>
+        </div>
+    </div>
+
+    <script>
+        // Banco de dados de frases para a IA rotacionar
+        const bancoIA = {
+            amor: [
+                "Meu amor, que este mês de [MES] de [ANO] seja um capítulo lindo da nossa história. Você é meu tudo!",
+                "Em cada dia de [MES] de [ANO], meu amor por você só cresce. Obrigado por ser minha luz!",
+                "Nada se compara ao que sinto por você. Que [MES] seja tão doce quanto o seu beijo!",
+                "Prometo te amar em cada segundo deste ano de [ANO]. Você é meu presente de [MES]!"
+            ],
+            carinho: [
+                "Passando para lembrar o quanto sua amizade é importante. Feliz [MES] de [ANO]!",
+                "Que a energia positiva te guie em todo este mês de [MES]. Você é especial!",
+                "Amizades verdadeiras brilham mais que o sol. Que seu [ANO] comece com alegria!",
+                "Um abraço apertado para você neste mês de [MES]! Que a felicidade te encontre sempre."
+            ],
+            aniversario: [
+                "Parabéns! Que este novo ciclo em [MES] de [ANO] traga sonhos realizados e muita saúde!",
+                "Feliz aniversário! Que as bênçãos te sigam por todo o ano de [ANO]. Aproveite seu dia!",
+                "Hoje o dia é todo seu! Que este [MES] marque o início da melhor fase da sua vida.",
+                "Muitas felicidades! Que a alegria de comemorar em [MES] se estenda por todo o ano!"
+            ]
+        };
+
+        // Inicialização
+        window.onload = () => {
+            const data = new Date();
+            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            document.getElementById('mes').value = meses[data.getMonth()];
+            document.getElementById('ano').value = data.getFullYear();
+            iaGerarTexto();
+        };
+
+        // Função de IA: Escolhe uma frase aleatória e aplica os dados
+        function iaGerarTexto() {
+            const categoria = document.getElementById('categoria').value;
+            const mes = document.getElementById('mes').value || "...";
+            const ano = document.getElementById('ano').value || "...";
+            
+            const frasesDisponiveis = bancoIA[categoria];
+            // Escolha aleatória
+            const fraseAleatoria = frasesDisponiveis[Math.floor(Math.random() * frasesDisponiveis.length)];
+            
+            // Substituição
+            let textoFinal = fraseAleatoria.replace("[MES]", mes).replace("[ANO]", ano);
+            
+            document.getElementById('texto-editavel').value = textoFinal;
+        }
+
+        function limparCampos() {
+            document.getElementById('mes').value = "";
+            document.getElementById('ano').value = "";
+            document.getElementById('texto-editavel').value = "";
+            document.getElementById('preview-container').style.display = 'none';
+            document.getElementById('btnComp').style.display = 'none';
+        }
+
+        function gerarVisualizacao() {
+            const mes = document.getElementById('mes').value || "Mês";
+            const ano = document.getElementById('ano').value || "Ano";
+            const categoria = document.getElementById('categoria').value;
+            const textoFinal = document.getElementById('texto-editavel').value;
+
+            document.getElementById('preview-container').style.display = 'block';
+            document.getElementById('btnComp').style.display = 'block';
+
+            const elementoTexto = document.getElementById('texto-animado');
+            elementoTexto.innerText = textoFinal;
+            
+            // Cores baseadas no estilo
+            if(categoria === 'amor') elementoTexto.style.color = '#FF4D4D';
+            else if(categoria === 'aniversario') elementoTexto.style.color = '#D488FF';
+            else elementoTexto.style.color = '#FFFFFF';
+
+            document.getElementById('selo-data').innerText = `${mes.toUpperCase()} • ${ano}`;
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+
+        async function compartilhar() {
+            const texto = document.getElementById('texto-animado').innerText;
+            const data = document.getElementById('selo-data').innerText;
+            const mensagemCompleta = `${texto}\n\n✨ (${data}) ✨`;
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: 'Mensagem Especial', text: mensagemCompleta });
+                } catch (err) { console.log("Cancelado"); }
+            } else {
+                navigator.clipboard.writeText(mensagemCompleta);
+                alert("Copiado! Basta colar no seu app de mensagens.");
+            }
+        }
+    </script>
+</body>
+</html>

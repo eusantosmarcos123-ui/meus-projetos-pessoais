@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Caixa - Marcos Vinícius</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 30px 15px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { margin-bottom: 25px; text-align: center; }
+        h1 { font-size: 2rem; color: var(--primary); }
+        .subtitle { color: var(--text-light); font-size: 0.95rem; }
+
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .summary-card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); border: 1px solid var(--border); }
+        .summary-card span { font-size: 0.85rem; color: var(--text-light); text-transform: uppercase; font-weight: 600; }
+        .summary-card h2 { font-size: 1.6rem; margin-top: 5px; }
+        .val-in { color: var(--success); }
+        .val-out { color: var(--danger); }
+        .val-total { color: var(--primary); }
+
+        .action-card { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 25px; }
+        .action-card h3 { margin-bottom: 15px; font-size: 1.1rem; }
+        form { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; }
+        input, select, button { padding: 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; outline: none; }
+        input:focus, select:focus { border-color: var(--primary); }
+        button { background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: var(--primary-hover); }
+
+        .table-card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+        th { background: #f1f5f9; color: var(--text-light); font-weight: 600; }
+        tr:last-child td { border-bottom: none; }
+        .badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+        .badge-in { background: #dcfce7; color: #15803d; }
+        .badge-out { background: #fee2e2; color: #b91c1c; }
+        .btn-del { background: transparent; color: var(--danger); border: none; cursor: pointer; font-size: 0.85rem; padding: 4px 8px; }
+        .btn-del:hover { text-decoration: underline; background: transparent; }
+
+        @media (max-width: 650px) {
+            form { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Sistema de Caixa</h1>
+            <p class="subtitle">Controle de Entradas, Saídas e Fluxo de Caixa</p>
+        </header>
+
+        <section class="summary-grid">
+            <div class="summary-card">
+                <span>Entradas</span>
+                <h2 class="val-in" id="totalEntradas">R$ 0,00</h2>
+            </div>
+            <div class="summary-card">
+                <span>Saídas</span>
+                <h2 class="val-out" id="totalSaidas">R$ 0,00</h2>
+            </div>
+            <div class="summary-card">
+                <span>Saldo em Caixa</span>
+                <h2 class="val-total" id="saldoTotal">R$ 0,00</h2>
+            </div>
+        </section>
+
+        <section class="action-card">
+            <h3>Nova Movimentação</h3>
+            <form id="caixaForm">
+                <input type="text" id="descricao" placeholder="Descrição (ex: Venda de Produto, Aluguel...)" required>
+                <input type="number" id="valor" step="0.01" min="0.01" placeholder="Valor (R$)" required>
+                <select id="tipo">
+                    <option value="entrada">Entrada</option>
+                    <option value="saida">Saída</option>
+                </select>
+                <button type="submit">Adicionar</button>
+            </form>
+        </section>
+
+        <section class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Descrição</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th style="text-align: right;">Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="movimentacoesBody">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-light);">Nenhuma movimentação registrada.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'marcos_caixa_movimentacoes';
+        let itens = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+        const form = document.getElementById('caixaForm');
+        const descInput = document.getElementById('descricao');
+        const valInput = document.getElementById('valor');
+        const tipoInput = document.getElementById('tipo');
+
+        function formatarMoeda(valor) {
+            return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function salvarEAtualizar() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(itens));
+            renderizar();
+        }
+
+        function removerItem(id) {
+            itens = itens.filter(i => i.id !== id);
+            salvarEAtualizar();
+        }
+
+        function renderizar() {
+            const tbody = document.getElementById('movimentacoesBody');
+            tbody.innerHTML = '';
+
+            let entradas = 0;
+            let saidas = 0;
+
+            if (itens.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-light);">Nenhuma movimentação registrada.</td></tr>';
+            } else {
+                itens.forEach(item => {
+                    if (item.tipo === 'entrada') entradas += item.valor;
+                    else saidas += item.valor;
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${item.data}</td>
+                        <td>${item.descricao}</td>
+                        <td><span class="badge ${item.tipo === 'entrada' ? 'badge-in' : 'badge-out'}">${item.tipo.toUpperCase()}</span></td>
+                        <td style="font-weight: 600; color: ${item.tipo === 'entrada' ? 'var(--success)' : 'var(--danger)'}">${formatarMoeda(item.valor)}</td>
+                        <td style="text-align: right;"><button class="btn-del" onclick="removerItem(${item.id})">Excluir</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            document.getElementById('totalEntradas').textContent = formatarMoeda(entradas);
+            document.getElementById('totalSaidas').textContent = formatarMoeda(saidas);
+            document.getElementById('saldoTotal').textContent = formatarMoeda(entradas - saidas);
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const novo = {
+                id: Date.now(),
+                descricao: descInput.value.trim(),
+                valor: parseFloat(valInput.value),
+                tipo: tipoInput.value,
+                data: new Date().toLocaleString('pt-BR')
+            };
+            itens.unshift(novo);
+            salvarEAtualizar();
+            form.reset();
+            descInput.focus();
+        });
+
+        renderizar();
+    </script>
+</body>
+</html>
